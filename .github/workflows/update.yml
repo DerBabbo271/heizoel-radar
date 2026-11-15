@@ -1,4 +1,4 @@
-name: Heizöl-Datenprüfung
+name: Heizöl24 Schnittstellen-Test
 on:
   workflow_dispatch:
   schedule:
@@ -6,12 +6,13 @@ on:
 permissions:
   contents: read
 jobs:
-  validate:
+  probe:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Validate data (price source not yet configured)
+      - name: Test 90552 / 2000 L (no price publishing)
         run: python fetch_prices.py
