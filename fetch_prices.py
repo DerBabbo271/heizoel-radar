@@ -31,7 +31,7 @@ try:
         val = (el.text or "").strip()
         # Diagnostic only: reveal compact values to identify units and fields.
         # Do not dump full XML or any attributes that could contain tokens.
-        print(" -", el.tag, "|", len(val), "|", val[:90])
+        print(" -", el.tag, "| attributes:", {k: v[:100] for k, v in el.attrib.items() if not any(s in k.lower() for s in ("token", "key", "auth", "secret", "cookie"))}, "| text:", val[:90])
 except (urllib.error.URLError, ET.ParseError, ValueError) as exc:
     print("Provider response error:", type(exc).__name__, str(exc)[:180])
     raise SystemExit(1)
