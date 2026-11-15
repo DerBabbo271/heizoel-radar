@@ -2,9 +2,14 @@
   "schema_version": 1,
   "postal_code": "90552",
   "quantity_liters": 2000,
-  "status": "unavailable",
-  "price_per_100_liters_eur": null,
-  "total_price_eur": null,
-  "source_url": null,
-  "checked_at": null
+  "product": "Heizöl Standard Schwefelarm",
+  "currency": "EUR",
+  "status": "ok",
+  "price_per_100_liters_eur": 165.23,
+  "total_price_eur": 3304.6,
+  "change_day_eur": null,
+  "source_url": "https://www.heizoel24.de//heizoel/angebotsliste?zipCode=90552&amount=2000&stations=1&product=1&options=24,6,5,11,9&cn=0&ap=0",
+  "checked_at": "2026-11-15T15:44:18.766657+00:00",
+  "price_basis": "HeizOel24 displayed consumer offer, EUR per 100 L; verify checkout for any special delivery conditions",
+  "note": "Indicative offer; confirm final price and delivery conditions before ordering."
 }
