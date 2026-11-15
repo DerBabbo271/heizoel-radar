@@ -1,38 +1,67 @@
 #!/usr/bin/env python3
-"""Inspect HeizOel24 XML structure without publishing or guessing prices."""
+"""Daily HeizOel24 standard heating oil quote for 90552 / 2000 L.
+Unofficial XML endpoint; fail closed and retain previous observation.
+"""
 import json
-import urllib.request
-import urllib.error
+import os
 import urllib.parse
+import urllib.request
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone, timedelta
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
-data = json.loads(Path("prices.json").read_text(encoding="utf-8"))
-assert data["postal_code"] == "90552" and data["quantity_liters"] == 2000
-params = urllib.parse.urlencode({
-    "zipCode": "90552", "litre": 2000,
-    "unloadingpoints": 1, "oilgrade": "standard",
-})
-url = "https://www.heizoel24.de/DailyPriceXml.ashx?" + params
-request = urllib.request.Request(url, headers={
-    "User-Agent": "Mozilla/5.0 (compatible; PersonalHeatingOilMonitor/1.0)",
-    "Accept": "application/xml, text/xml, */*",
-})
+ZIP = "90552"
+LITERS = 2000
+FILE = Path("prices.json")
+HISTORY = Path("history.json")
+query = urllib.parse.urlencode({"zipCode": ZIP, "litre": LITERS, "unloadingpoints": 1, "oilgrade": "standard"})
+url = "https://www.heizoel24.de/DailyPriceXml.ashx?" + query
+req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0", "Accept":"application/xml"})
+with urllib.request.urlopen(req, timeout=25) as res:
+    if res.status != 200:
+        raise RuntimeError(f"HTTP {res.status}")
+    root = ET.fromstring(res.read(120000))
+if root.tag != "result" or root.findtext("plz") != ZIP:
+    raise ValueError("Unexpected postal code or XML root")
+if root.findtext("taxRate") != "19":
+    raise ValueError("Unexpected tax rate")
+delivery = next((e for e in root.findall("./deliveries/delivery")
+                 if e.get("unloadingPoints") == "1" and e.get("litre") == str(LITERS)), None)
+if delivery is None:
+    raise ValueError("Matching delivery not found")
+matches = [e for e in delivery.findall("price") if e.get("oilGrade") == "Heizöl Standard Schwefelarm"]
+if len(matches) != 1:
+    raise ValueError("Standard oil price missing or ambiguous")
+node = matches[0]
+order_url = node.get("orderLink", "")
+if not order_url.startswith("https://www.heizoel24.de/"):
+    raise ValueError("Missing official offer URL")
 try:
-    with urllib.request.urlopen(request, timeout=20) as response:
-        body = response.read(120000)
-        print("HTTP status:", response.status)
-        print("Content type:", response.headers.get("Content-Type", "unknown"))
-        print("Body length:", len(body))
-    root = ET.fromstring(body)
-    print("XML root tag:", root.tag)
-    print("XML elements (tag, text length, text preview):")
-    for el in root.iter():
-        val = (el.text or "").strip()
-        # Diagnostic only: reveal compact values to identify units and fields.
-        # Do not dump full XML or any attributes that could contain tokens.
-        print(" -", el.tag, "| attributes:", {k: v[:100] for k, v in el.attrib.items() if not any(s in k.lower() for s in ("token", "key", "auth", "secret", "cookie"))}, "| text:", val[:90])
-except (urllib.error.URLError, ET.ParseError, ValueError) as exc:
-    print("Provider response error:", type(exc).__name__, str(exc)[:180])
-    raise SystemExit(1)
-print("Diagnostic only. No prices published; quantity, taxes and delivery still require verification.")
+    price = Decimal((node.text or "").strip().replace(",", "."))
+except InvalidOperation as exc:
+    raise ValueError("Invalid price") from exc
+if not Decimal("20") < price < Decimal("500"):
+    raise ValueError("Price outside conservative sanity bounds")
+now = datetime.now(timezone.utc)
+history = json.loads(HISTORY.read_text(encoding="utf-8")) if HISTORY.exists() else []
+history = [h for h in history if h.get("date") != now.date().isoformat()]
+previous = [h for h in history if h.get("date", "") < now.date().isoformat()]
+prev = max(previous, key=lambda h: h["date"]) if previous else None
+change = (price - Decimal(str(prev["price_per_100_liters_eur"]))) if prev else None
+history.append({"date": now.date().isoformat(), "price_per_100_liters_eur": float(price)})
+history = sorted(history, key=lambda h: h["date"])[-120:]
+total = (price * Decimal(LITERS) / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+out = {
+    "schema_version": 1, "postal_code": ZIP, "quantity_liters": LITERS,
+    "product": "Heizöl Standard Schwefelarm", "currency": "EUR",
+    "status": "ok", "price_per_100_liters_eur": float(price),
+    "total_price_eur": float(total),
+    "change_day_eur": float(change) if change is not None else None,
+    "source_url": order_url, "checked_at": now.isoformat(),
+    "price_basis": "HeizOel24 displayed consumer offer, EUR per 100 L; verify checkout for any special delivery conditions",
+    "note": "Indicative offer; confirm final price and delivery conditions before ordering."
+}
+FILE.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+HISTORY.write_text(json.dumps(history, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+print(f"Verified standard offer for {ZIP}, {LITERS} L: {price} EUR/100L; total {total} EUR")
