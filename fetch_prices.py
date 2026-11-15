@@ -47,7 +47,7 @@ now = datetime.now(timezone.utc)
 history = json.loads(HISTORY.read_text(encoding="utf-8")) if HISTORY.exists() else []
 history = [h for h in history if h.get("date") != now.date().isoformat()]
 previous = [h for h in history if h.get("date", "") < now.date().isoformat()]
-prev = max(previous, key=lambda h: h["date"]) if previous else None
+prev = next((h for h in previous if h["date"] == (now.date() - timedelta(days=1)).isoformat()), None)
 change = (price - Decimal(str(prev["price_per_100_liters_eur"]))) if prev else None
 history.append({"date": now.date().isoformat(), "price_per_100_liters_eur": float(price)})
 history = sorted(history, key=lambda h: h["date"])[-120:]
