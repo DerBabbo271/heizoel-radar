@@ -5,11 +5,11 @@
   "product": "Heizöl Standard Schwefelarm",
   "currency": "EUR",
   "status": "ok",
-  "price_per_100_liters_eur": 163.45,
-  "total_price_eur": 3269.0,
-  "change_day_eur": -5.53,
+  "price_per_100_liters_eur": 156.9,
+  "total_price_eur": 3138.0,
+  "change_day_eur": -6.55,
   "source_url": "https://www.heizoel24.de//heizoel/angebotsliste?zipCode=90552&amount=2000&stations=1&product=1&options=24,6,5,11,9&cn=0&ap=0",
-  "checked_at": "2026-11-17T07:28:56.502363+00:00",
+  "checked_at": "2026-11-18T07:28:33.669291+00:00",
   "price_basis": "HeizOel24 displayed consumer offer, EUR per 100 L; verify checkout for any special delivery conditions",
   "note": "Indicative offer; confirm final price and delivery conditions before ordering."
 }
