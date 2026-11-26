@@ -42,5 +42,9 @@
   {
     "date": "2026-11-25",
     "price_per_100_liters_eur": 147.98
+  },
+  {
+    "date": "2026-11-26",
+    "price_per_100_liters_eur": 149.76
   }
 ]
